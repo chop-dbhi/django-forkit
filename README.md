@@ -48,3 +48,6 @@ Once satisfied with the changes, simply call ``commit``.
 ```python
 author_fork.commit()
 ```
+
+Check out https://github.com/cbmi/django-forkit/blob/master/forkit/tests/models.py
+for a more comlicated data model.
