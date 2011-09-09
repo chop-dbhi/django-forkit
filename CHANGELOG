@@ -1,0 +1,15 @@
+2011-09-09  Byron Ruth  <ruthb@email.chop.edu>
+
+	* Forking. Implemented an abstract model class `ForkableModel' which
+	supports shallow and deep forking model instances.
+	
+	* Deferred Commits. All relationships are deferred from being saved until
+	the whole hierarchy has been traversed during forking. Forks are not
+	committed by default to ensure integrity errors are not forced.
+
+	* Diffs. `ForkableModel' also implements a `diff' method for instances
+	that can be used to compare data values against another object of the same
+	type.
+
+	* Limitations. `through' models for many-to-many fields are not yet
+	supported. Deep diffs are not yet supported.
