@@ -62,65 +62,60 @@ class ForkCache(object):
         self._cache[key] = value
 
 
-def _get_field_by_accessor(self, accessor):
-    """Extends the model ``Options.get_field_by_name`` to look up reverse
-    relationships by their accessor name. This gets cached on the first
-    lookup.
+class ForkableModel(models.Model):
 
-    The cache will only be needed when the ``related_name`` attribute has
-    not been set for reverse relationships.
-    """
-    try:
-        field, model, direct, m2m = self.get_field_by_name(accessor)
+    def _get_field_by_accessor(self, accessor):
+        """Extends the model ``Options.get_field_by_name`` to look up reverse
+        relationships by their accessor name. This gets cached on the first
+        lookup.
 
-        if isinstance(field, related.RelatedObject):
-            field = field.field
-    # if this occurs, try related object accessor
-    except models.FieldDoesNotExist, e:
-        # check to see if this cache has been set
-        if not hasattr(self, 'related_objects_by_accessor'):
-            cache = {}
+        The cache will only be needed when the ``related_name`` attribute has
+        not been set for reverse relationships.
+        """
+        try:
+            field, model, direct, m2m = self._meta.get_field_by_name(accessor)
 
-            # reverse foreign key and many-to-many rels
-            related_objects = (
-                self.get_all_related_objects() +
-                self.get_all_related_many_to_many_objects()
+            if isinstance(field, related.RelatedObject):
+                field = field.field
+        # if this occurs, try related object accessor
+        except models.FieldDoesNotExist, e:
+            # check to see if this cache has been set
+            if not hasattr(self._meta, 'related_objects_by_accessor'):
+                cache = {}
+
+                # reverse foreign key and many-to-many rels
+                related_objects = (
+                    self._meta.get_all_related_objects() +
+                    self._meta.get_all_related_many_to_many_objects()
+                )
+
+                for rel in iter(related_objects):
+                    cache[rel.get_accessor_name()] = rel
+
+                self._meta.related_objects_by_accessor = cache
+
+            rel = self._meta.related_objects_by_accessor.get(accessor, None)
+
+            # if the related object still doesn't exist, raise the exception
+            # that is present
+            if rel is None:
+                raise e
+
+            field, model, direct, m2m = (
+                rel.field,
+                rel.model,
+                False,
+                isinstance(rel.field, models.ManyToManyField)
             )
 
-            for rel in iter(related_objects):
-                cache[rel.get_accessor_name()] = rel
-
-            self.related_objects_by_accessor = cache
-
-        rel = self.related_objects_by_accessor.get(accessor, None)
-
-        # if the related object still doesn't exist, raise the exception
-        # that is present
-        if rel is None:
-            raise e
-
-        field, model, direct, m2m = (
-            rel.field,
-            rel.model,
-            False,
-            isinstance(rel.field, models.ManyToManyField)
-        )
-
-    # ignoring ``model`` for now.. no use for it
-    return field, direct, m2m
-
-
-class ForkableModel(models.Model):
-    def __init__(self, *args, **kwargs):
-        super(ForkableModel, self).__init__(*args, **kwargs)
-        # add additional helper method to Model.Options
-        self._meta.__class__.get_field_by_accessor = _get_field_by_accessor
+        # ignoring ``model`` for now.. no use for it
+        return field, direct, m2m
 
     def _get_field_value(self, accessor):
         """Simple helper that returns the model's data value and catches
         non-existent related object lookups.
         """
-        field, direct, m2m = self._meta.get_field_by_accessor(accessor)
+        field, direct, m2m = self._get_field_by_accessor(accessor)
 
         value = None
         # attempt to retrieve deferred values first, since they will be

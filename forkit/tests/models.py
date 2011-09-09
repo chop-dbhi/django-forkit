@@ -63,26 +63,26 @@ class ForkableModelTestCase(TestCase):
         blog = Blog.objects.get(pk=1)
         tag = Tag.objects.get(pk=1)
 
-        author._meta.get_field_by_accessor('posts')
-        author._meta.get_field_by_accessor('blog')
+        author._get_field_by_accessor('posts')
+        author._get_field_by_accessor('blog')
         # the forker has not been populated with the cache because it
         # did not need it.
         self.assertFalse(hasattr(author._meta, 'related_objects_by_accessor'))
 
-        post._meta.get_field_by_accessor('authors')
-        post._meta.get_field_by_accessor('blog')
-        post._meta.get_field_by_accessor('tags')
+        post._get_field_by_accessor('authors')
+        post._get_field_by_accessor('blog')
+        post._get_field_by_accessor('tags')
         self.assertFalse(hasattr(post._meta, 'related_objects_by_accessor'))
 
-        blog._meta.get_field_by_accessor('author')
+        blog._get_field_by_accessor('author')
         # intentionally left off a related_name
-        blog._meta.get_field_by_accessor('post_set')
+        blog._get_field_by_accessor('post_set')
         # the cache was created for the ``post_set`` accessor
         self.assertEqual(blog._meta.related_objects_by_accessor.keys(), ['post_set'])
 
         # reverse many-to-many without a related_name can also be looked up by
         # their model name
-        tag._meta.get_field_by_accessor('post')
+        tag._get_field_by_accessor('post')
         # no cache will be created
         self.assertFalse(hasattr(tag._meta, 'related_objects_by_accessor'))
 
