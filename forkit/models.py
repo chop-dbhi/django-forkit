@@ -201,6 +201,7 @@ class ForkableModel(models.Model):
         # direct foreign keys used as is (shallow) or forked (deep). for deep
         # forks, the association to the new objects will be defined on the
         # directly accessed object
+
         if value:
             if direct and deep:
                 fork = cache.get(value)
@@ -389,7 +390,8 @@ class ForkableModel(models.Model):
                     value = value.value
                     setval = False
 
-                value._commit_direct(direct=direct, deep=deep)
+                if isinstance(value, ForkableModel):
+                    value._commit_direct(direct=direct, deep=deep)
 
                 if setval:
                     # save the object to get a primary key
