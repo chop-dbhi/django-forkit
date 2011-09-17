@@ -270,14 +270,7 @@ class ForkableModel(models.Model):
         # non-relational field, perform a deepcopy to ensure no mutable nonsense
         setattr(target, accessor, deepcopy(value))
 
-    def fork(self, *args, **kwargs):
-        """Creates a fork of the reference object. If an object is supplied, it
-        effectively gets reset relative to the reference object.
-        """
-        target = self.__class__()
-        return self.reset(target, *args, **kwargs)
-
-    def reset(self, target, fields=None, exclude=('pk',), deep=False, commit=False, cache=None):
+    def _reset(self, target, fields=None, exclude=('pk',), deep=False, commit=False, cache=None):
         "Resets the specified target relative to ``self``"
         if target and not isinstance(target, self.__class__):
             raise TypeError('the object supplied must be of the same type as the reference')
@@ -315,6 +308,16 @@ class ForkableModel(models.Model):
             target.commit()
 
         return target
+
+    def fork(self, *args, **kwargs):
+        """Creates a fork of the reference object. If an object is supplied, it
+        effectively gets reset relative to the reference object.
+        """
+        target = self.__class__()
+        return self._reset(target, *args, **kwargs)
+
+    def reset(self, *args, **kwargs):
+        return self._reset(*args, **kwargs)
 
     def _diff_field(self, target, accessor, deep):
         "Returns the field's value of ``target`` if different form ``reference``."
