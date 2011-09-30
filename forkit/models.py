@@ -314,7 +314,7 @@ class ForkableModel(models.Model):
         effectively gets reset relative to the reference object.
         """
         target = self.__class__()
-        return self._reset(target, *args, **kwargs)
+        return self.reset(target, *args, **kwargs)
 
     def reset(self, *args, **kwargs):
         return self._reset(*args, **kwargs)
