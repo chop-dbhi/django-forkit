@@ -1,8 +1,8 @@
 2011-09-09  Byron Ruth  <ruthb@email.chop.edu>
 
-    * Reset Method. Added `reset' method which requires a model instance
-    `target' that enables "resetting" an existing object rather than creating
-    a new object per `fork'.
+	* Reset Method. Added `reset' method which requires a model instance
+	`target' that enables "resetting" an existing object rather than creating
+	a new object per `fork'.
 
 2011-09-09  Byron Ruth  <ruthb@email.chop.edu>
 
