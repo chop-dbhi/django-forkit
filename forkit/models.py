@@ -12,7 +12,6 @@ class DeferProxy(object):
 class ForkState(object):
     """Encapulates all state of a forked model object.
 
-        ``ref`` - reference to the model object it represents
         ``parent`` - reference to the mode object this object was forked from
         ``fields`` - list field names used to fork the object
         ``exclude`` - exclude fields from the default set
@@ -63,7 +62,6 @@ class ForkCache(object):
 
 
 class ForkableModel(models.Model):
-
     def _get_field_by_accessor(self, accessor):
         """Extends the model ``Options.get_field_by_name`` to look up reverse
         relationships by their accessor name. This gets cached on the first
