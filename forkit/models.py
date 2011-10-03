@@ -12,16 +12,11 @@ class DeferProxy(object):
 class ForkState(object):
     """Encapulates all state of a forked model object.
 
-        ``ref`` - reference to the model object it represents
         ``parent`` - reference to the mode object this object was forked from
-        ``fields`` - list field names used to fork the object
         ``exclude`` - exclude fields from the default set
     """
-    def __init__(self, parent, fields, exclude):
+    def __init__(self, parent):
         self.parent = parent
-        self.fields = fields
-        self.exclude = exclude
-
         self.deferred_direct = {}
         self.deferred_related = {}
 
@@ -275,16 +270,17 @@ class ForkableModel(models.Model):
         if target and not isinstance(target, self.__class__):
             raise TypeError('the object supplied must be of the same type as the reference')
 
-        if not hasattr(target, '_forkstate'):
-            # no fields are defined, so get the default ones for shallow or deep
-            if not fields:
-                fields = self._default_model_fields(exclude=exclude, deep=deep)
+        # no fields are defined, so get the default ones for shallow or deep
+        if not fields:
+            fields = self._default_model_fields(exclude=exclude, deep=deep)
 
+        if not hasattr(target, '_forkstate'):
             # for the duration of the reset, each object's state is tracked via
             # the a ForkState object. this is primarily necessary to track
             # deferred commits of related objects
-            target._forkstate = ForkState(parent=self, fields=fields, exclude=exclude)
+            target._forkstate = ForkState(parent=self)
 
+        # TODO check for uncommitted changes under a different parent?
         elif target._forkstate.has_deferreds:
             target._forkstate.clear_commits()
 
