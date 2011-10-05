@@ -1,3 +1,14 @@
+2011-10-05  Byron Ruth  <ruthb@email.chop.edu>
+
+	* Pre and Post Signals. Signals have been implemented for customizing the
+	behavior of a `fork', `reset', `diff', and `commit' outside of the normal
+	use of the API. The sender of the each signal is the model class of the
+	model instance being manipulated.
+
+	The `fork', `reset', and `diff' pre- signals pass the `parent', `instance',
+	and `config' to the receiver. The `config' is a `dict' which can be
+	updated in-place for greater flexibility.
+
 2011-10-04  Byron Ruth  <ruthb@email.chop.edu>
 
 	* API Refactor. Public methods including `fork', `reset', `diff', and

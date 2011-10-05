@@ -1,6 +1,5 @@
 Overview
 ========
-
 Django-Forkit is composed of a set of utility functions for _forking_,
 _resetting_, and _diffing_ model objects. Below are a list of the current
 utility functions:
@@ -102,3 +101,69 @@ Once satisfied with the changes, simply call ``commit``.
 ```python
 author_fork.commit()
 ```
+
+Signals
+=======
+For each of the utility function above, ``pre_FOO`` and ``post_FOO`` signals
+are sent allowing for a decoupled approached for customizing behavior, especially
+when performing deep forks/resets/diffs.
+
+forkit.signals.pre_fork
+-----------------------
+
+- ``sender`` - the model class of the instance
+- ``parent`` - the reference object the fork is being created from
+- ``instance`` - the forked object itself
+- ``config`` - a ``dict`` of the keyword arguments passed into ``forkit.tools.fork``
+
+forkit.signals.post_fork
+-----------------------
+
+- ``sender`` - the model class of the instance
+- ``parent`` - the reference object the fork is being created from
+- ``instance`` - the forked object itself
+
+forkit.signals.pre_reset
+-----------------------
+
+- ``sender`` - the model class of the instance
+- ``parent`` - the reference object the instance is being reset relative to
+- ``instance`` - the object being reset
+- ``config`` - a ``dict`` of the keyword arguments passed into ``forkit.tools.reset``
+
+forkit.signals.post_reset
+-----------------------
+
+- ``sender`` - the model class of the instance
+- ``parent`` - the reference object the instance is being reset relative to
+- ``instance`` - the object being reset
+
+forkit.signals.pre_commit
+-----------------------
+
+- ``sender`` - the model class of the instance
+- ``parent`` - the reference object the instance has been derived
+- ``instance`` - the object to be committed
+
+forkit.signals.post_commit
+-----------------------
+
+- ``sender`` - the model class of the instance
+- ``parent`` - the reference object the instance has been derived
+- ``instance`` - the object that has been committed
+
+resetit.signals.pre_diff
+-----------------------
+
+- ``sender`` - the model class of the instance
+- ``parent`` - the reference object the instance is being diffed against
+- ``instance`` - the object being diffed with
+- ``config`` - a ``dict`` of the keyword arguments passed into ``forkit.tools.diff``
+
+resetit.signals.post_diff
+-----------------------
+
+- ``sender`` - the model class of the instance
+- ``parent`` - the reference object the instance is being diffed against
+- ``instance`` - the object being diffed with
+- ``diff`` - the diff between the ``parent`` and ``instance``
