@@ -5,9 +5,9 @@
 	use of the API. The sender of the each signal is the model class of the
 	model instance being manipulated.
 
-	The `fork', `reset', and `diff' pre- signals pass the `parent', `instance',
-	and `config' to the receiver. The `config' is a `dict' which can be
-	updated in-place for greater flexibility.
+	The `fork', `reset', and `diff' pre- signals pass the `reference',
+	`instance', and `config' to the receiver. The `config' is a `dict' which
+	can be updated in-place for greater flexibility.
 
 2011-10-04  Byron Ruth  <ruthb@email.chop.edu>
 

@@ -2,7 +2,7 @@ from copy import deepcopy
 from django.db import models, transaction
 from forkit import utils, signals
 
-def _fork_one2one(obj, target, value, field, direct, accessor, deep, cache):
+def _fork_one2one(reference, instance, value, field, direct, accessor, deep, cache):
     # if the fork has an existing value, but the reference does not,
     # it cannot be set to None since the field is not nullable. nothing
     # can be done here.
@@ -11,7 +11,7 @@ def _fork_one2one(obj, target, value, field, direct, accessor, deep, cache):
             return
 
     # for a deep fork, ensure the fork exists, but only add if this is
-    # a direct access. since the fork will refer back to ``target``, it's
+    # a direct access. since the fork will refer back to ``instance``, it's
     # unnecessary to setup the defer twice
     if deep:
         fork = cache.get(value)
@@ -22,9 +22,9 @@ def _fork_one2one(obj, target, value, field, direct, accessor, deep, cache):
         if not direct:
             fork = utils.DeferProxy(fork)
 
-        target._forkstate.defer_commit(accessor, fork, direct=direct)
+        instance._forkstate.defer_commit(accessor, fork, direct=direct)
 
-def _fork_foreignkey(obj, target, value, field, direct, accessor, deep, cache):
+def _fork_foreignkey(reference, instance, value, field, direct, accessor, deep, cache):
     # direct foreign keys used as is (shallow) or forked (deep). for deep
     # forks, the association to the new objects will be defined on the
     # directly accessed object
@@ -49,13 +49,13 @@ def _fork_foreignkey(obj, target, value, field, direct, accessor, deep, cache):
         else:
             fork = value
 
-        target._forkstate.defer_commit(accessor, fork, direct=direct)
+        instance._forkstate.defer_commit(accessor, fork, direct=direct)
     # nullable direct foreign keys can be set to None
     elif direct and field.null:
-        setattr(target, accessor, None)
+        setattr(instance, accessor, None)
 
 # TODO add support for ``through`` model
-def _fork_many2many(obj, target, value, field, direct, accessor, deep, cache):
+def _fork_many2many(reference, instance, value, field, direct, accessor, deep, cache):
     if not value:
         return
 
@@ -72,49 +72,49 @@ def _fork_many2many(obj, target, value, field, direct, accessor, deep, cache):
         if not direct:
             fork = utils.DeferProxy(fork)
 
-    target._forkstate.defer_commit(accessor, fork)
+    instance._forkstate.defer_commit(accessor, fork)
 
-def _fork_field(obj, target, accessor, deep, cache):
+def _fork_field(reference, instance, accessor, deep, cache):
     """Creates a copy of the reference value for the defined ``accessor``
     (field). For deep forks, each related object is related objects must
     be created first prior to being recursed.
     """
-    value, field, direct, m2m = utils._get_field_value(obj, accessor)
+    value, field, direct, m2m = utils._get_field_value(reference, accessor)
 
     if isinstance(field, models.OneToOneField):
-        return _fork_one2one(obj, target, value, field, direct,
+        return _fork_one2one(reference, instance, value, field, direct,
             accessor, deep, cache)
 
     if isinstance(field, models.ForeignKey):
-        return _fork_foreignkey(obj, target, value, field, direct,
+        return _fork_foreignkey(reference, instance, value, field, direct,
             accessor, deep, cache)
 
     if isinstance(field, models.ManyToManyField):
-        return _fork_many2many(obj, target, value, field, direct,
+        return _fork_many2many(reference, instance, value, field, direct,
             accessor, deep, cache)
 
     # non-relational field, perform a deepcopy to ensure no mutable nonsense
-    setattr(target, accessor, deepcopy(value))
+    setattr(instance, accessor, deepcopy(value))
 
-def _reset(obj, target, fields=None, exclude=('pk',), deep=False, commit=True, cache=None):
-    "Resets the specified target relative to ``obj``"
-    if not isinstance(target, obj.__class__):
+def _reset(reference, instance, fields=None, exclude=('pk',), deep=False, commit=True, cache=None):
+    "Resets the specified instance relative to ``reference``"
+    if not isinstance(instance, reference.__class__):
         raise TypeError('the object supplied must be of the same type as the reference')
 
-    if not hasattr(target, '_forkstate'):
+    if not hasattr(instance, '_forkstate'):
         # no fields are defined, so get the default ones for shallow or deep
         if not fields:
-            fields = utils._default_model_fields(obj, exclude=exclude, deep=deep)
+            fields = utils._default_model_fields(reference, exclude=exclude, deep=deep)
 
         # for the duration of the reset, each object's state is tracked via
         # the a ForkState object. this is primarily necessary to track
         # deferred commits of related objects
-        target._forkstate = utils.ForkState(parent=obj, fields=fields, exclude=exclude)
+        instance._forkstate = utils.ForkState(reference=reference, fields=fields, exclude=exclude)
 
-    elif target._forkstate.has_deferreds:
-        target._forkstate.clear_commits()
+    elif instance._forkstate.has_deferreds:
+        instance._forkstate.clear_commits()
 
-    target._forkstate.deep = deep
+    instance._forkstate.deep = deep
 
     # for every call, keep track of the reference and the object (fork).
     # this is used for recursive calls to related objects. this ensures
@@ -126,29 +126,29 @@ def _reset(obj, target, fields=None, exclude=('pk',), deep=False, commit=True, c
     else:
         commit = False
 
-    cache.add(obj, target)
+    cache.add(reference, instance)
 
     # iterate over each field and fork it!. nested calls will not commit,
     # until the recursion has finished
     for accessor in fields:
-        _fork_field(obj, target, accessor, deep=deep, cache=cache)
+        _fork_field(reference, instance, accessor, deep=deep, cache=cache)
 
     if commit:
-        commit_model_object(target)
+        commit_model_object(instance)
 
-    return target
+    return instance
 
-def _commit_direct(obj, direct=True, deep=False):
+def _commit_direct(reference, direct=True, deep=False):
     """Recursively set all direct related object references to the
     reference object. Each downstream related object is saved before
     being set.
 
     ``direct`` should be false if it was already called
     """
-    if hasattr(obj, '_forkstate'):
+    if hasattr(reference, '_forkstate'):
         # get and clear to prevent infinite recursion
-        deferred = obj._forkstate.deferred_direct.iteritems()
-        obj._forkstate.deferred_direct = {}
+        deferred = reference._forkstate.deferred_direct.iteritems()
+        reference._forkstate.deferred_direct = {}
 
         for accessor, value in deferred:
             setval = True
@@ -161,19 +161,19 @@ def _commit_direct(obj, direct=True, deep=False):
 
             if setval:
                 # save the object to get a primary key
-                setattr(obj, accessor, value)
+                setattr(reference, accessor, value)
 
         # all save triggered by a direct commit must be saved to ensure
         # potential circular references, in addition to not already having
         # a primary key
-        if direct or not obj.pk:
-            obj.save()
+        if direct or not reference.pk:
+            reference.save()
 
-def _commit_related(obj, deep=False):
-    if hasattr(obj, '_forkstate'):
+def _commit_related(reference, deep=False):
+    if hasattr(reference, '_forkstate'):
         # get and clear to prevent infinite recursion
-        deferred = obj._forkstate.deferred_related.iteritems()
-        obj._forkstate.deferred_related = {}
+        deferred = reference._forkstate.deferred_related.iteritems()
+        reference._forkstate.deferred_related = {}
 
         for accessor, value in deferred:
             setval = True
@@ -188,7 +188,7 @@ def _commit_related(obj, deep=False):
                 _commit_direct(value, direct=False, deep=deep)
 
             if setval:
-                setattr(obj, accessor, value)
+                setattr(reference, accessor, value)
 
             # commit all related defers
             if type(value) is list:
@@ -196,45 +196,45 @@ def _commit_related(obj, deep=False):
             else:
                 _commit_related(value, deep=deep)
 
-def fork_model_object(obj, **kwargs):
+def fork_model_object(reference, **kwargs):
     """Creates a fork of the reference object. If an object is supplied, it
     effectively gets reset relative to the reference object.
     """
     # initialize new instance
-    target = obj.__class__()
+    instance = reference.__class__()
     # pre-signal
-    signals.pre_fork.send(sender=obj.__class__, parent=obj,
-        instance=target, config=kwargs)
-    _reset(obj, target, **kwargs)
+    signals.pre_fork.send(sender=reference.__class__, reference=reference,
+        instance=instance, config=kwargs)
+    _reset(reference, instance, **kwargs)
     # post-signal
-    signals.post_fork.send(sender=obj.__class__, parent=obj,
-        instance=target)
-    return target
+    signals.post_fork.send(sender=reference.__class__, reference=reference,
+        instance=instance)
+    return instance
 
-def reset_model_object(obj, target, **kwargs):
-    "Resets the ``target`` object relative to ``obj``'s state."
+def reset_model_object(reference, instance, **kwargs):
+    "Resets the ``instance`` object relative to ``reference``'s state."
     # pre-signal
-    signals.pre_reset.send(sender=obj.__class__, parent=obj,
-        instance=target, config=kwargs)
-    _reset(obj, target, **kwargs)
+    signals.pre_reset.send(sender=reference.__class__, reference=reference,
+        instance=instance, config=kwargs)
+    _reset(reference, instance, **kwargs)
     # post-signal
-    signals.post_reset.send(sender=obj.__class__, parent=obj,
-        instance=target)
-    return target
+    signals.post_reset.send(sender=reference.__class__, reference=reference,
+        instance=instance)
+    return instance
 
 @transaction.commit_on_success
-def commit_model_object(obj):
+def commit_model_object(instance):
     "Recursively commits direct and related objects."
-    if not hasattr(obj, '_forkstate'):
-        obj.save()
+    if not hasattr(instance, '_forkstate'):
+        instance.save()
         return
 
-    parent = obj._forkstate.parent
+    reference = instance._forkstate.reference
     # pre-signal
-    signals.pre_commit.send(sender=obj.__class__, parent=parent, instance=obj)
+    signals.pre_commit.send(sender=reference.__class__, reference=reference, instance=instance)
     # save dependents of this object
-    _commit_direct(obj, direct=True, deep=obj._forkstate.deep)
+    _commit_direct(instance, direct=True, deep=instance._forkstate.deep)
     # depends on ``reference`` having a primary key
-    _commit_related(obj, deep=obj._forkstate.deep)
+    _commit_related(instance, deep=instance._forkstate.deep)
     # post-signal
-    signals.post_commit.send(sender=obj.__class__, parent=parent, instance=obj)
+    signals.post_commit.send(sender=reference.__class__, reference=reference, instance=instance)

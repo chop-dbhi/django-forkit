@@ -6,7 +6,7 @@ utility functions:
 
 forkit.tools.fork
 -----------------
-Creates and returns a new object that is identical to ``obj``.
+Creates and returns a new object that is identical to ``reference``.
 
 - ``fields`` - A list of fields to fork. If a falsy value, the fields
 will be inferred depending on the value of ``deep``.
@@ -19,18 +19,18 @@ in the order of dependency. If ``False``, all commits are stashed away until
 the root fork is committed.
 
 ```python
-fork(obj, [fields=None], [exclude=('pk',)], [deep=False], [commit=True])
+fork(reference, [fields=None], [exclude=('pk',)], [deep=False], [commit=True])
 ```
 
 forkit.tools.reset
 ------------------
-Same parameters as above, except that an explicit ``target`` is specified and
-will result in an in-place update of ``target``. _Note: currently, deep resets
+Same parameters as above, except that an explicit ``instance`` is specified and
+will result in an in-place update of ``instance``. _Note: currently, deep resets
 do not apply to related objects, that is, related objects will be forked rather
 than updated in place. This functionality is scheduled for a future release._
 
 ```python
-reset(obj, target, [fields=None], [exclude=('pk',)], [deep=False], [commit=True])
+reset(reference, instance, [fields=None], [exclude=('pk',)], [deep=False], [commit=True])
 ```
 
 forkit.tools.commit
@@ -38,19 +38,19 @@ forkit.tools.commit
 Commits any unsaved changes to a forked or reset object.
 
 ```python
-commit(obj)
+commit(reference)
 ```
 
 forkit.tools.diff
 -----------------
 Performs a _diff_ between two model objects of the same type. The output is a
-``dict`` of differing values relative to ``obj1``. Thus, if ``obj1.foo`` is
-``bar`` and ``obj2.foo`` is ``baz``, the output should be ``{'foo': 'baz'}``.
-_Note: deep diffs only work for simple non-circular relationships. Improved
-functionality is scheduled for a future release._
+``dict`` of differing values relative to ``reference``. Thus, if
+``reference.foo`` is ``bar`` and ``instance.foo`` is ``baz``, the output will
+be ``{'foo': 'baz'}``. _Note: deep diffs only work for simple non-circular
+relationships. Improved functionality is scheduled for a future release._
 
 ```python
-diff(obj1, obj2, [fields=None], [exclude=('pk',)], [deep=False])
+diff(reference, instance, [fields=None], [exclude=('pk',)], [deep=False])
 ```
 
 ForkableModel
@@ -106,13 +106,13 @@ Signals
 =======
 For each of the utility function above, ``pre_FOO`` and ``post_FOO`` signals
 are sent allowing for a decoupled approached for customizing behavior, especially
-when performing deep forks/resets/diffs.
+when performing deep operations.
 
 forkit.signals.pre_fork
 -----------------------
 
 - ``sender`` - the model class of the instance
-- ``parent`` - the reference object the fork is being created from
+- ``reference`` - the reference object the fork is being created from
 - ``instance`` - the forked object itself
 - ``config`` - a ``dict`` of the keyword arguments passed into ``forkit.tools.fork``
 
@@ -120,14 +120,14 @@ forkit.signals.post_fork
 -----------------------
 
 - ``sender`` - the model class of the instance
-- ``parent`` - the reference object the fork is being created from
+- ``reference`` - the reference object the fork is being created from
 - ``instance`` - the forked object itself
 
 forkit.signals.pre_reset
 -----------------------
 
 - ``sender`` - the model class of the instance
-- ``parent`` - the reference object the instance is being reset relative to
+- ``reference`` - the reference object the instance is being reset relative to
 - ``instance`` - the object being reset
 - ``config`` - a ``dict`` of the keyword arguments passed into ``forkit.tools.reset``
 
@@ -135,35 +135,35 @@ forkit.signals.post_reset
 -----------------------
 
 - ``sender`` - the model class of the instance
-- ``parent`` - the reference object the instance is being reset relative to
+- ``reference`` - the reference object the instance is being reset relative to
 - ``instance`` - the object being reset
 
 forkit.signals.pre_commit
 -----------------------
 
 - ``sender`` - the model class of the instance
-- ``parent`` - the reference object the instance has been derived
+- ``reference`` - the reference object the instance has been derived
 - ``instance`` - the object to be committed
 
 forkit.signals.post_commit
 -----------------------
 
 - ``sender`` - the model class of the instance
-- ``parent`` - the reference object the instance has been derived
+- ``reference`` - the reference object the instance has been derived
 - ``instance`` - the object that has been committed
 
-resetit.signals.pre_diff
+forkit.signals.pre_diff
 -----------------------
 
 - ``sender`` - the model class of the instance
-- ``parent`` - the reference object the instance is being diffed against
+- ``reference`` - the reference object the instance is being diffed against
 - ``instance`` - the object being diffed with
 - ``config`` - a ``dict`` of the keyword arguments passed into ``forkit.tools.diff``
 
-resetit.signals.post_diff
+forkit.signals.post_diff
 -----------------------
 
 - ``sender`` - the model class of the instance
-- ``parent`` - the reference object the instance is being diffed against
+- ``reference`` - the reference object the instance is being diffed against
 - ``instance`` - the object being diffed with
-- ``diff`` - the diff between the ``parent`` and ``instance``
+- ``diff`` - the diff between the ``reference`` and ``instance``

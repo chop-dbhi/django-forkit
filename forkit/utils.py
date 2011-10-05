@@ -11,12 +11,12 @@ class DeferProxy(object):
 class ForkState(object):
     """Encapulates all state of a forked model object.
 
-        ``parent`` - reference to the mode object this object was forked from
-        ``fields`` - list field names used to fork the object
-        ``exclude`` - exclude fields from the default set
+        ``reference`` - the reference object this object was derived from
+        ``fields`` - list field names applicable to this object
+        ``exclude`` - list of field names excluded from the operation
     """
-    def __init__(self, parent, fields, exclude):
-        self.parent = parent
+    def __init__(self, reference, fields, exclude):
+        self.reference = reference
         self.fields = fields
         self.exclude = exclude
 
