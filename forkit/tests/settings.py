@@ -11,7 +11,6 @@ INSTALLED_APPS = (
 )
 
 COVERAGE_MODULES = (
-    'forkit.models',
     'forkit.diff',
     'forkit.fork',
     'forkit.utils',

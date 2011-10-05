@@ -1,6 +1,6 @@
 from copy import deepcopy
 from django.db import models, transaction
-from forkit import utils
+from forkit import utils, signals
 
 def _fork_one2one(obj, target, value, field, direct, accessor, deep, cache):
     # if the fork has an existing value, but the reference does not,
@@ -196,21 +196,45 @@ def _commit_related(obj, deep=False):
             else:
                 _commit_related(value, deep=deep)
 
-def fork_model_object(obj, *args, **kwargs):
+def fork_model_object(obj, **kwargs):
     """Creates a fork of the reference object. If an object is supplied, it
     effectively gets reset relative to the reference object.
     """
+    # initialize new instance
     target = obj.__class__()
-    return _reset(obj, target, *args, **kwargs)
+    # pre-signal
+    signals.pre_fork.send(sender=obj.__class__, parent=obj,
+        instance=target, config=kwargs)
+    _reset(obj, target, **kwargs)
+    # post-signal
+    signals.post_fork.send(sender=obj.__class__, parent=obj,
+        instance=target)
+    return target
 
-def reset_model_object(obj, target, *args, **kwargs):
-    return _reset(obj, target, *args, **kwargs)
+def reset_model_object(obj, target, **kwargs):
+    "Resets the ``target`` object relative to ``obj``'s state."
+    # pre-signal
+    signals.pre_reset.send(sender=obj.__class__, parent=obj,
+        instance=target, config=kwargs)
+    _reset(obj, target, **kwargs)
+    # post-signal
+    signals.post_reset.send(sender=obj.__class__, parent=obj,
+        instance=target)
+    return target
 
 @transaction.commit_on_success
 def commit_model_object(obj):
     "Recursively commits direct and related objects."
+    if not hasattr(obj, '_forkstate'):
+        obj.save()
+        return
+
+    parent = obj._forkstate.parent
+    # pre-signal
+    signals.pre_commit.send(sender=obj.__class__, parent=parent, instance=obj)
     # save dependents of this object
     _commit_direct(obj, direct=True, deep=obj._forkstate.deep)
     # depends on ``reference`` having a primary key
     _commit_related(obj, deep=obj._forkstate.deep)
-
+    # post-signal
+    signals.post_commit.send(sender=obj.__class__, parent=parent, instance=obj)
