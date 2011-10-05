@@ -76,9 +76,9 @@ setup(
     version = version,
     name = 'django-forkit',
     author = 'Byron Ruth',
-    author_email = 'bruth@codeomics.com',
-    description = ('Abstract model class for creating forks (shallow or '
-        'deep copies) and diffing model instances.'),
+    author_email = 'b@devel.io',
+    description = 'Utility functions for forking, resetting ' \
+        'and diffing model objects',
     license = 'BSD',
     keywords = 'fork deepcopy model abstract diff',
 
