@@ -8,6 +8,7 @@ utility functions:
 forkit.tools.fork
 -----------------
 Creates and returns a new object that is identical to ``obj``.
+
 - ``fields`` - A list of fields to fork. If a falsy value, the fields
 will be inferred depending on the value of ``deep``.
 - ``exclude`` - A list of fields to not fork (not applicable if ``fields``
