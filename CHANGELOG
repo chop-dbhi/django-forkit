@@ -1,3 +1,12 @@
+2011-10-04  Byron Ruth  <ruthb@email.chop.edu>
+
+	* API Refactor. Public methods including `fork', `reset', `diff', and
+	`commit' have been defined as standalone functions. This refactor
+	emphasizes greater coverage of applicability for all existing models
+	rather than only those that inherit from `ForkableModel'. `ForkableModel'
+	still contains the public methods for backwards compatibility and
+	convenience.
+
 2011-09-09  Byron Ruth  <ruthb@email.chop.edu>
 
 	* Reset Method. Added `reset' method which requires a model instance
