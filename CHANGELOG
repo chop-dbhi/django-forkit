@@ -1,3 +1,9 @@
+2011-10-07  Byron Ruth  <ruthb@email.chop.edu>
+
+	* Deep Reset. Improved deep reset capability which does not incorrectly
+	fork related objects. In this implementation, only directly related
+	objects are traversed.
+
 2011-10-05  Byron Ruth  <ruthb@email.chop.edu>
 
 	* Pre and Post Signals. Signals have been implemented for customizing the

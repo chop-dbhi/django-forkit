@@ -13,6 +13,8 @@ INSTALLED_APPS = (
 COVERAGE_MODULES = (
     'forkit.diff',
     'forkit.fork',
+    'forkit.reset',
+    'forkit.commit',
     'forkit.utils',
 )
 

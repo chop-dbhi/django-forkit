@@ -96,20 +96,20 @@ def _fork_field(reference, instance, accessor, deep, cache):
     # non-relational field, perform a deepcopy to ensure no mutable nonsense
     setattr(instance, accessor, deepcopy(value))
 
-def _fork(reference, instance, fields=None, exclude=('pk',), deep=False, commit=True, symmetrical=False, cache=None):
+def _fork(reference, instance, fields=None, exclude=('pk',), deep=False, commit=True, cache=None):
     "Resets the specified instance relative to ``reference``"
     if not isinstance(instance, reference.__class__):
         raise TypeError('the object supplied must be of the same type as the reference')
 
-    if not hasattr(instance, '_forkstate'):
-        # no fields are defined, so get the default ones for shallow or deep
-        if not fields:
-            fields = utils._default_model_fields(reference, exclude=exclude, deep=deep)
+    # no fields are defined, so get the default ones for shallow or deep
+    if not fields:
+        fields = utils._default_model_fields(reference, exclude=exclude, deep=deep)
 
-        # for the duration of the reset, each object's state is tracked via
+    if not hasattr(instance, '_forkstate'):
+        # for the duration of the fork, each object's state is tracked via
         # the a ForkState object. this is primarily necessary to track
         # deferred commits of related objects
-        instance._forkstate = utils.ForkState(reference=reference, fields=fields, exclude=exclude)
+        instance._forkstate = utils.ForkState(reference=reference)
 
     elif instance._forkstate.has_deferreds:
         instance._forkstate.clear_commits()

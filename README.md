@@ -24,15 +24,15 @@ fork(reference, [fields=None], [exclude=('pk',)], [deep=False], [commit=True])
 
 forkit.tools.reset
 ------------------
-Same parameters as above, except that an explicit ``instance`` is specified and
-will result in an in-place update of ``instance``.
- _Note: currently, deep resets do not apply to related objects, that is,
- related objects will be forked rather than updated in place. This
- functionality is scheduled for a future release._
+Same parameters as above, except that an explicit ``instance`` is rquired and
+will result in an in-place update of ``instance``. For shallow resets, only the
+local non-relational fields will be updated. For deep resets, _direct_
+foreign keys will be traversed and reset. _Many-to-many and reverse foreign keys
+are not attempted to be reset because the comparison between the related objects
+for ``reference`` and the related objects for ``instance`` becomes ambiguous._
 
 ```python
-reset(reference, instance, [fields=None], [exclude=('pk',)], [deep=False],
-    [commit=True], [fork=False])
+reset(reference, instance, [fields=None], [exclude=('pk',)], [deep=False], [commit=True])
 ```
 
 forkit.tools.commit

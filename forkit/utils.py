@@ -9,17 +9,9 @@ class DeferProxy(object):
         return '<DeferProxy: "{0}">'.format(repr(self.value))
 
 class ForkState(object):
-    """Encapulates all state of a forked model object.
-
-        ``reference`` - the reference object this object was derived from
-        ``fields`` - list field names applicable to this object
-        ``exclude`` - list of field names excluded from the operation
-    """
-    def __init__(self, reference, fields, exclude):
+    "Encapulates all state of a manipulated model object."
+    def __init__(self, reference):
         self.reference = reference
-        self.fields = fields
-        self.exclude = exclude
-
         self.deferred_direct = {}
         self.deferred_related = {}
 
