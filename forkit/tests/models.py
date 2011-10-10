@@ -1,5 +1,4 @@
 from django.db import models
-from forkit.tests import receivers
 from forkit.models import ForkableModel
 
 class Tag(ForkableModel):

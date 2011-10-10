@@ -7,16 +7,14 @@ def _reset_one2one(reference, instance, refvalue, field, direct, accessor, deep,
     value = utils._get_field_value(instance, accessor)[0]
     # only if an instance value exists and it's a deep reset
     if refvalue and value and deep:
-        if not memo.get(refvalue):
-            reset_model_object(refvalue, value, deep=deep, memo=memo)
+        _memoize_reset(refvalue, value, deep=deep, commit=False, memo=memo)
         instance._forkstate.defer_commit(accessor, value, direct=direct)
 
 def _reset_foreignkey(reference, instance, refvalue, field, direct, accessor, deep, memo):
     value = utils._get_field_value(instance, accessor)[0]
     # direct foreign keys used as is (shallow) or forked (deep)
     if refvalue and value and deep:
-        if not memo.get(refvalue):
-            reset_model_object(refvalue, value, deep=deep, memo=memo)
+        _memoize_reset(refvalue, value, deep=deep, commit=False, memo=memo)
     elif not value:
         value = refvalue
 
@@ -44,10 +42,44 @@ def _reset_field(reference, instance, accessor, deep, memo):
     # non-relational field, perform a deepcopy to ensure no mutable nonsense
     setattr(instance, accessor, deepcopy(value))
 
-def _reset(reference, instance, fields=None, exclude=('pk',), deep=False, commit=True, memo=None):
+def _memoize_reset(reference, instance, **kwargs):
     "Resets the specified instance relative to ``reference``"
+    # popped so it does not get included in the config for the signal
+    memo = kwargs.pop('memo', None)
+
+    # for every call, keep track of the reference and the object (fork).
+    # this is used for recursive calls to related objects. this ensures
+    # relationships that follow back up the tree are caught and are merely
+    # referenced rather than traversed again.
+    if memo is None:
+        memo = utils.Memo()
+    elif memo.has(reference):
+        return memo.get(reference)
+
     if not isinstance(instance, reference.__class__):
         raise TypeError('The instance supplied must be of the same type as the reference')
+
+    memo.add(reference, instance)
+
+    # default configuration
+    config = {
+        'fields': None,
+        'exclude': ['pk'],
+        'deep': False,
+        'commit': True,
+    }
+
+    # update with user-defined
+    config.update(kwargs)
+
+    # pre-signal
+    signals.pre_reset.send(sender=reference.__class__, reference=reference,
+        instance=instance, config=kwargs)
+
+    fields = config['fields']
+    exclude = config['exclude']
+    deep = config['deep']
+    commit = config['commit']
 
     # no fields are defined, so get the default ones for shallow or deep
     if not fields:
@@ -62,24 +94,14 @@ def _reset(reference, instance, fields=None, exclude=('pk',), deep=False, commit
     elif instance._forkstate.has_deferreds:
         instance._forkstate.clear_commits()
 
-    instance._forkstate.deep = deep
-
-    # for every call, keep track of the reference and the instance.
-    # this is used for recursive calls to related objects. this ensures
-    # relationships that follow back up the tree are caught and are merely
-    # referenced rather than traversed again.
-    if not memo:
-        memo = utils.Memo()
-    # override commit for non-top level calls
-    else:
-        commit = False
-
-    memo.add(reference, instance)
-
     # iterate over each field and fork it!. nested calls will not commit,
     # until the recursion has finished
     for accessor in fields:
         _reset_field(reference, instance, accessor, deep=deep, memo=memo)
+
+    # post-signal
+    signals.post_reset.send(sender=reference.__class__, reference=reference,
+        instance=instance)
 
     if commit:
         commit_model_object(instance)
@@ -89,11 +111,4 @@ def _reset(reference, instance, fields=None, exclude=('pk',), deep=False, commit
 
 def reset_model_object(reference, instance, **kwargs):
     "Resets the ``instance`` object relative to ``reference``'s state."
-    # pre-signal
-    signals.pre_reset.send(sender=reference.__class__, reference=reference,
-        instance=instance, config=kwargs)
-    _reset(reference, instance, **kwargs)
-    # post-signal
-    signals.post_reset.send(sender=reference.__class__, reference=reference,
-        instance=instance)
-    return instance
+    return _memoize_reset(reference, instance, **kwargs)

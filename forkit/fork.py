@@ -15,7 +15,7 @@ def _fork_one2one(reference, instance, value, field, direct, accessor, deep, mem
     # a direct access. since the fork will refer back to ``instance``, it's
     # unnecessary to setup the defer twice
     if deep:
-        fork = _memoize_fork(value, deep=deep, memo=memo)
+        fork = _memoize_fork(value, deep=deep, commit=False, memo=memo)
 
         if not direct:
             fork = utils.DeferProxy(fork)
@@ -26,16 +26,15 @@ def _fork_foreignkey(reference, instance, value, field, direct, accessor, deep, 
     # direct foreign keys used as is (shallow) or forked (deep). for deep
     # forks, the association to the new objects will be defined on the
     # directly accessed object
-
     if value:
         if direct and deep:
-            fork = _memoize_fork(value, deep=deep, memo=memo)
+            fork = _memoize_fork(value, deep=deep, commit=False, memo=memo)
 
         # iterate over each object in the related set
         elif not direct and deep:
             fork = []
             for rel in value:
-                fork.append(_memoize_fork(rel, deep=deep, memo=memo))
+                fork.append(_memoize_fork(rel, deep=deep, commit=False, memo=memo))
 
             fork = utils.DeferProxy(fork)
         else:
@@ -55,7 +54,7 @@ def _fork_many2many(reference, instance, value, field, direct, accessor, deep, m
     else:
         fork = []
         for rel in value:
-            fork.append(_memoize_fork(rel, deep=deep, memo=memo))
+            fork.append(_memoize_fork(rel, deep=deep, commit=False, memo=memo))
 
         if not direct:
             fork = utils.DeferProxy(fork)
@@ -86,10 +85,8 @@ def _fork_field(reference, instance, accessor, deep, memo):
 
 def _memoize_fork(reference, **kwargs):
     "Resets the specified instance relative to ``reference``"
-
     # popped so it does not get included in the config for the signal
     memo = kwargs.pop('memo', None)
-    topcall = False
 
     # for every call, keep track of the reference and the object (fork).
     # this is used for recursive calls to related objects. this ensures
@@ -97,7 +94,6 @@ def _memoize_fork(reference, **kwargs):
     # referenced rather than traversed again.
     if memo is None:
         memo = utils.Memo()
-        topcall = True
     elif memo.has(reference):
         return memo.get(reference)
 
@@ -139,8 +135,6 @@ def _memoize_fork(reference, **kwargs):
     elif instance._forkstate.has_deferreds:
         instance._forkstate.clear_commits()
 
-    instance._forkstate.deep = deep
-
     # iterate over each field and fork it!. nested calls will not commit,
     # until the recursion has finished
     for accessor in fields:
@@ -150,7 +144,7 @@ def _memoize_fork(reference, **kwargs):
     signals.post_fork.send(sender=reference.__class__, reference=reference,
         instance=instance)
 
-    if commit and topcall:
+    if commit:
         commit_model_object(instance)
 
     return instance
