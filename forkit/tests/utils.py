@@ -24,7 +24,7 @@ class UtilsTestCase(TestCase):
         utils._get_field_by_accessor(self.blog, 'author')
         # intentionally left off a related_name
         utils._get_field_by_accessor(self.blog, 'post_set')
-        # the cache was created for the ``post_set`` accessor
+        # the memo was created for the ``post_set`` accessor
         self.assertEqual(self.blog._meta.related_objects_by_accessor.keys(), ['post_set'])
 
         # reverse many-to-many without a related_name can also be looked up by
