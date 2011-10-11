@@ -7,8 +7,8 @@ def _commit_direct(instance, memo, **kwargs):
     being set.
     """
     # get and clear to prevent infinite recursion
-    relations = instance._forkstate.deferred_direct.items()
-    instance._forkstate.deferred_direct = {}
+    relations = instance._commits.direct.items()
+    instance._commits.direct = {}
 
     for accessor, value in relations:
         _memoize_commit(value, memo=memo, **kwargs)
@@ -16,12 +16,12 @@ def _commit_direct(instance, memo, **kwargs):
         setattr(instance, accessor, value)
 
 def _commit_related(instance, memo, stack, **kwargs):
-    relations = instance._forkstate.deferred_related.items()
-    instance._forkstate.deferred_related = {}
+    relations = instance._commits.related.items()
+    instance._commits.related = {}
 
     for accessor, value in relations:
         # execute the commit direct cycle for these related objects,
-        if isinstance(value, utils.DeferProxy):
+        if isinstance(value, utils.DeferredCommit):
             value = value.value
             if type(value) is list:
                 stack.extend(value)
@@ -36,10 +36,10 @@ def _commit_related(instance, memo, stack, **kwargs):
             setattr(instance, accessor, value)
 
 def _memoize_commit(instance, **kwargs):
-    if not hasattr(instance, '_forkstate'):
+    if not hasattr(instance, '_commits'):
         return instance
 
-    reference = instance._forkstate.reference
+    reference = instance._commits.reference
 
     root = False
     memo = kwargs.pop('memo', None)

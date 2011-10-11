@@ -42,7 +42,7 @@ class DiffModelObjectTestCase(TestCase):
 
     def test_fork_shallow_diff(self):
         # even without the commit, the diff is clean. related objects are
-        # compared against the _deferred_related dict
+        # compared against the _related dict
 
         fork = self.author.fork(commit=False)
         diff = fork.diff(self.author)

@@ -1,41 +1,36 @@
 from django.db import models
 from django.db.models import related
 
-class DeferProxy(object):
+class DeferredCommit(object):
+    """Differentiates a non-direct related object that should be deferred
+    during the commit phase.
+    """
     def __init__(self, value):
         self.value = value
 
     def __repr__(self):
-        return '<DeferProxy: "{0}">'.format(repr(self.value))
+        return '<DeferredCommit: "{0}">'.format(repr(self.value))
 
-class ForkState(object):
-    "Encapulates all state of a manipulated model object."
+
+class Commits(object):
+    "Stores pending direct and related commits relative to the reference."
     def __init__(self, reference):
         self.reference = reference
-        self.deferred_direct = {}
-        self.deferred_related = {}
+        self.direct = {}
+        self.related = {}
 
-    def clear_commits(self):
-        self.deferred_direct = {}
-        self.deferred_related = {}
-
-    def defer_commit(self, accessor, obj, direct=False):
+    def defer(self, accessor, obj, direct=False):
         "Add object in the deferred queue for the given accessor."
         if direct:
-            self.deferred_direct[accessor] = obj
+            self.direct[accessor] = obj
         else:
-            self.deferred_related[accessor] = obj
+            self.related[accessor] = obj
 
-    @property
-    def has_deferreds(self):
-        "Test whether there are pending commits."
-        return self.deferred_direct or self.deferred_related
-
-    def get_deferred(self, accessor, direct=False):
+    def get(self, accessor, direct=False):
         "Get a deferred fork by the given accessor."
         if direct:
-            return self.deferred_direct.get(accessor, None)
-        return self.deferred_related.get(accessor, None)
+            return self.direct.get(accessor, None)
+        return self.related.get(accessor, None)
 
 
 class Memo(object):
@@ -117,12 +112,12 @@ def _get_field_value(instance, accessor):
     # attempt to retrieve deferred values first, since they will be
     # the value once comitted. these will never contain non-relational
     # fields
-    if hasattr(instance, '_forkstate') and instance._forkstate.has_deferreds:
+    if hasattr(instance, '_commits'):
         if m2m:
-            value = instance._forkstate.get_deferred(accessor, direct=False)
+            value = instance._commits.get(accessor, direct=False)
         else:
-            value = instance._forkstate.get_deferred(accessor, direct=direct)
-        if value and isinstance(value, DeferProxy):
+            value = instance._commits.get(accessor, direct=direct)
+        if value and isinstance(value, DeferredCommit):
             value = value.value
 
     # deferred relations can never be a NoneType

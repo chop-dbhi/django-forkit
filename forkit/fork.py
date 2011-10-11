@@ -9,9 +9,9 @@ def _fork_one2one(instance, value, field, direct, accessor, deep, **kwargs):
         fork = _memoize_fork(value, deep=deep, **kwargs)
 
         if not direct:
-            fork = utils.DeferProxy(fork)
+            fork = utils.DeferredCommit(fork)
 
-        instance._forkstate.defer_commit(accessor, fork, direct=direct)
+        instance._commits.defer(accessor, fork, direct=direct)
 
 def _fork_foreignkey(instance, value, field, direct, accessor, deep, **kwargs):
     if deep:
@@ -19,21 +19,21 @@ def _fork_foreignkey(instance, value, field, direct, accessor, deep, **kwargs):
             fork = _memoize_fork(value, deep=deep, **kwargs)
         else:
             fork = [_memoize_fork(rel, deep=deep, **kwargs) for rel in value]
-            fork = utils.DeferProxy(fork)
+            fork = utils.DeferredCommit(fork)
     else:
         fork = value
 
-    instance._forkstate.defer_commit(accessor, fork, direct=direct)
+    instance._commits.defer(accessor, fork, direct=direct)
 
 def _fork_many2many(instance, value, field, direct, accessor, deep, **kwargs):
     if deep:
         fork = [_memoize_fork(rel, deep=deep, **kwargs) for rel in value]
         if not direct:
-            fork = utils.DeferProxy(fork)
+            fork = utils.DeferredCommit(fork)
     else:
         fork = value
 
-    instance._forkstate.defer_commit(accessor, fork)
+    instance._commits.defer(accessor, fork)
 
 def _fork_field(reference, instance, accessor, **kwargs):
     """Creates a copy of the reference value for the defined ``accessor``
@@ -79,6 +79,7 @@ def _memoize_fork(reference, **kwargs):
 
     # initialize and memoize new instance
     instance = reference.__class__()
+    instance._commits = utils.Commits(reference)    
     memo.add(reference, instance)
 
     # default configuration
@@ -106,15 +107,6 @@ def _memoize_fork(reference, **kwargs):
     # no fields are defined, so get the default ones for shallow or deep
     if not fields:
         fields = utils._default_model_fields(reference, exclude=exclude, deep=deep)
-
-    if not hasattr(instance, '_forkstate'):
-        # for the duration of the fork, each object's state is tracked via
-        # the a ForkState object. this is primarily necessary to track
-        # deferred commits of related objects
-        instance._forkstate = utils.ForkState(reference=reference)
-
-    elif instance._forkstate.has_deferreds:
-        instance._forkstate.clear_commits()
 
     # add arguments for downstream use
     kwargs.update({'deep': deep})

@@ -7,7 +7,7 @@ def _reset_one2one(instance, refvalue, field, direct, accessor, deep, **kwargs):
     value = utils._get_field_value(instance, accessor)[0]
     if refvalue and value and deep:
         _memoize_reset(refvalue, value, deep=deep, **kwargs)
-        instance._forkstate.defer_commit(accessor, value, direct=direct)
+        instance._commits.defer(accessor, value, direct=direct)
 
 def _reset_foreignkey(instance, refvalue, field, direct, accessor, deep, **kwargs):
     value = utils._get_field_value(instance, accessor)[0]
@@ -17,7 +17,7 @@ def _reset_foreignkey(instance, refvalue, field, direct, accessor, deep, **kwarg
     elif not value:
         value = refvalue
 
-    instance._forkstate.defer_commit(accessor, value, direct=direct)
+    instance._commits.defer(accessor, value, direct=direct)
 
 def _reset_field(reference, instance, accessor, **kwargs):
     """Creates a copy of the reference value for the defined ``accessor``
@@ -60,6 +60,7 @@ def _memoize_reset(reference, instance, **kwargs):
     if not isinstance(instance, reference.__class__):
         raise TypeError('The instance supplied must be of the same type as the reference')
 
+    instance._commits = utils.Commits(reference)
     memo.add(reference, instance)
 
     # default configuration
@@ -85,15 +86,6 @@ def _memoize_reset(reference, instance, **kwargs):
     # no fields are defined, so get the default ones for shallow or deep
     if not fields:
         fields = utils._default_model_fields(reference, exclude=exclude, deep=deep)
-
-    if not hasattr(instance, '_forkstate'):
-        # for the duration of the reset, each object's state is tracked via
-        # the a ForkState object. this is primarily necessary to track
-        # deferred commits of related objects
-        instance._forkstate = utils.ForkState(reference=reference)
-
-    elif instance._forkstate.has_deferreds:
-        instance._forkstate.clear_commits()
 
     kwargs.update({'deep': deep})
 
