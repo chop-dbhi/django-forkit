@@ -1,3 +1,9 @@
+2011-10-10  Byron Ruth  <ruthb@email.chop.edu>
+
+	* Arbitrary Signal Keyword Arguments. Each utility function can take any
+	additional keyword arguments that will be passed to each signal receiver
+	called for the entirety of the operation.
+
 2011-10-07  Byron Ruth  <ruthb@email.chop.edu>
 
 	* Deep Reset. Improved deep reset capability which does not incorrectly

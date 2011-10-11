@@ -17,9 +17,11 @@ of them as well, effectively creating a new _tree_ of objects.
 - ``commit`` - If ``True``, all forks (including related objects) will be saved
 in the order of dependency. If ``False``, all commits are stashed away until
 the root fork is committed.
+- ``**kwargs`` - Any additional keyword arguments are passed along to all signal
+receivers. Useful for altering runtime behavior in signal receivers.
 
 ```python
-fork(reference, [fields=None], [exclude=('pk',)], [deep=False], [commit=True])
+fork(reference, [fields=None], [exclude=('pk',)], [deep=False], [commit=True], [**kwargs])
 ```
 
 forkit.tools.reset
@@ -32,7 +34,7 @@ are not attempted to be reset because the comparison between the related objects
 for ``reference`` and the related objects for ``instance`` becomes ambiguous._
 
 ```python
-reset(reference, instance, [fields=None], [exclude=('pk',)], [deep=False], [commit=True])
+reset(reference, instance, [fields=None], [exclude=('pk',)], [deep=False], [commit=True], [**kwargs])
 ```
 
 forkit.tools.commit
@@ -40,7 +42,7 @@ forkit.tools.commit
 Commits any unsaved changes to a forked or reset object.
 
 ```python
-commit(reference)
+commit(reference, [**kwargs])
 ```
 
 forkit.tools.diff
@@ -52,7 +54,7 @@ be ``{'foo': 'baz'}``. _Note: deep diffs only work for simple non-circular
 relationships. Improved functionality is scheduled for a future release._
 
 ```python
-diff(reference, instance, [fields=None], [exclude=('pk',)], [deep=False])
+diff(reference, instance, [fields=None], [exclude=('pk',)], [deep=False], [**kwargs])
 ```
 
 ForkableModel

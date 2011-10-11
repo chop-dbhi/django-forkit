@@ -24,12 +24,12 @@ class ForkModelObjectTestCase(TestCase):
         fork2 = self.author.fork(commit=False)
 
         self.assertEqual(fork2.pk, None)
-        self.assertEqual(fork2._forkstate.deferred_related.keys(), ['posts'])
+        self.assertEqual(fork2._commits.related.keys(), ['posts'])
 
         fork2.commit()
         self.assertEqual(fork2.pk, 4)
         self.assertEqual(self.author.posts.through.objects.count(), 4)
-        self.assertEqual(fork2._forkstate.deferred_related, {})
+        self.assertEqual(fork2._commits.related, {})
 
         # Post
 
