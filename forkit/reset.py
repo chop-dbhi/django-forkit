@@ -3,24 +3,23 @@ from django.db import models
 from forkit import utils, signals
 from forkit.commit import commit_model_object
 
-def _reset_one2one(reference, instance, refvalue, field, direct, accessor, deep, memo):
+def _reset_one2one(instance, refvalue, field, direct, accessor, deep, **kwargs):
     value = utils._get_field_value(instance, accessor)[0]
-    # only if an instance value exists and it's a deep reset
     if refvalue and value and deep:
-        _memoize_reset(refvalue, value, deep=deep, commit=False, memo=memo)
+        _memoize_reset(refvalue, value, deep=deep, **kwargs)
         instance._forkstate.defer_commit(accessor, value, direct=direct)
 
-def _reset_foreignkey(reference, instance, refvalue, field, direct, accessor, deep, memo):
+def _reset_foreignkey(instance, refvalue, field, direct, accessor, deep, **kwargs):
     value = utils._get_field_value(instance, accessor)[0]
-    # direct foreign keys used as is (shallow) or forked (deep)
     if refvalue and value and deep:
-        _memoize_reset(refvalue, value, deep=deep, commit=False, memo=memo)
+        _memoize_reset(refvalue, value, deep=deep, **kwargs)
+    # for shallow or when value is None, use the reference value
     elif not value:
         value = refvalue
 
     instance._forkstate.defer_commit(accessor, value, direct=direct)
 
-def _reset_field(reference, instance, accessor, deep, memo):
+def _reset_field(reference, instance, accessor, **kwargs):
     """Creates a copy of the reference value for the defined ``accessor``
     (field). For deep forks, each related object is related objects must
     be created first prior to being recursed.
@@ -31,13 +30,15 @@ def _reset_field(reference, instance, accessor, deep, memo):
     if not direct or m2m:
         return
 
+    kwargs['commit'] = False
+
     if isinstance(field, models.OneToOneField):
-        return _reset_one2one(reference, instance, value, field, direct,
-            accessor, deep, memo)
+        return _reset_one2one(instance, value, field, direct,
+            accessor, **kwargs)
 
     if isinstance(field, models.ForeignKey):
-        return _reset_foreignkey(reference, instance, value, field, direct,
-            accessor, deep, memo)
+        return _reset_foreignkey(instance, value, field, direct,
+            accessor, **kwargs)
 
     # non-relational field, perform a deepcopy to ensure no mutable nonsense
     setattr(instance, accessor, deepcopy(value))
@@ -94,10 +95,12 @@ def _memoize_reset(reference, instance, **kwargs):
     elif instance._forkstate.has_deferreds:
         instance._forkstate.clear_commits()
 
+    kwargs.update({'deep': deep})
+
     # iterate over each field and fork it!. nested calls will not commit,
     # until the recursion has finished
     for accessor in fields:
-        _reset_field(reference, instance, accessor, deep=deep, memo=memo)
+        _reset_field(reference, instance, accessor, **kwargs)
 
     # post-signal
     signals.post_reset.send(sender=reference.__class__, reference=reference,
@@ -107,7 +110,6 @@ def _memoize_reset(reference, instance, **kwargs):
         commit_model_object(instance)
 
     return instance
-
 
 def reset_model_object(reference, instance, **kwargs):
     "Resets the ``instance`` object relative to ``reference``'s state."

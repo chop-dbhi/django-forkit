@@ -1,7 +1,7 @@
 from django.db import models, transaction
 from forkit import utils, signals
 
-def _commit_direct(instance, memo):
+def _commit_direct(instance, memo, **kwargs):
     """Recursively set all direct related object references to the
     instance object. Each downstream related object is saved before
     being set.
@@ -11,11 +11,11 @@ def _commit_direct(instance, memo):
     instance._forkstate.deferred_direct = {}
 
     for accessor, value in relations:
-        _memoize_commit(value, memo=memo)
+        _memoize_commit(value, memo=memo, **kwargs)
         # save the object to get a primary key
         setattr(instance, accessor, value)
 
-def _commit_related(instance, memo, stack):
+def _commit_related(instance, memo, stack, **kwargs):
     relations = instance._forkstate.deferred_related.items()
     instance._forkstate.deferred_related = {}
 
@@ -29,9 +29,9 @@ def _commit_related(instance, memo, stack):
                 stack.append(value)
         else:
             if type(value) is list:
-                map(lambda rel: _memoize_commit(rel, memo=memo), value)
+                map(lambda rel: _memoize_commit(rel, memo=memo, **kwargs), value)
             elif isinstance(value, models.Model):
-                _memoize_commit(value, memo=memo)
+                _memoize_commit(value, memo=memo, **kwargs)
 
             setattr(instance, accessor, value)
 
@@ -42,13 +42,13 @@ def _memoize_commit(instance, **kwargs):
     reference = instance._forkstate.reference
 
     root = False
-    memo = kwargs.get('memo', None)
-    stack = kwargs.get('stack', [])
+    memo = kwargs.pop('memo', None)
+    stack = kwargs.pop('stack', [])
 
-    # for every call, keep track of the reference and the object (fork).
-    # this is used for recursive calls to related objects. this ensures
-    # relationships that follow back up the tree are caught and are merely
-    # referenced rather than traversed again.
+    # for every call, keep track of the reference and the instance being
+    # acted on. this is used for recursive calls to related objects. this
+    # ensures relationships that follow back up the tree are caught and are
+    # merely referenced rather than traversed again.
     if memo is None:
         root = True
         memo = utils.Memo()
@@ -59,23 +59,24 @@ def _memoize_commit(instance, **kwargs):
 
     # pre-signal
     signals.pre_commit.send(sender=reference.__class__, reference=reference,
-        instance=instance)
+        instance=instance, **kwargs)
 
-    _commit_direct(instance, memo=memo)
+    # commit all dependencies first, save it, then travese dependents
+    _commit_direct(instance, memo=memo, **kwargs)
     instance.save()
-    _commit_related(instance, memo=memo, stack=stack)
+    _commit_related(instance, memo=memo, stack=stack, **kwargs)
 
     if root:
         for value in iter(stack):
-            _memoize_commit(value, memo=memo, stack=[])
+            _memoize_commit(value, memo=memo, stack=[], **kwargs)
 
     # post-signal
     signals.post_commit.send(sender=reference.__class__, reference=reference,
-        instance=instance)
+        instance=instance, **kwargs)
 
     return instance
 
 @transaction.commit_on_success
-def commit_model_object(instance):
+def commit_model_object(instance, **kwargs):
     "Recursively commits direct and related objects."
-    return _memoize_commit(instance)
+    return _memoize_commit(instance, **kwargs)

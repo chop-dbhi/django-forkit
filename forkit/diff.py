@@ -1,7 +1,7 @@
 from django.db import models
 from forkit import utils, signals
 
-def _diff_field(reference, instance, accessor, deep):
+def _diff_field(reference, instance, accessor, deep, **kwargs):
     "Returns the field's value of ``instance`` if different form ``reference``."
     val1, field, direct, m2m = utils._get_field_value(reference, accessor)
     val2 = utils._get_field_value(instance, accessor)[0]
@@ -13,7 +13,7 @@ def _diff_field(reference, instance, accessor, deep):
     # direct foreign keys and one-to-one
     elif deep and (isinstance(field, models.ForeignKey) or isinstance(field, models.OneToOneField)):
         if val1 and val2:
-            diff = diff_model_object(val1, val2)
+            diff = diff_model_object(val1, val2, **kwargs)
             if diff:
                 return {accessor: diff}
     elif val1 != val2:
@@ -35,13 +35,13 @@ def _diff_queryset(reference, qs1, qs2):
     elif qs2:
         if qs2.count(): return qs2
 
-def _diff(reference, instance, fields=None, exclude=('pk',), deep=False):
+def _diff(reference, instance, fields=None, exclude=('pk',), deep=False, **kwargs):
     if not fields:
         fields = utils._default_model_fields(reference, exclude, deep=deep)
 
     diff = {}
     for accessor in fields:
-        diff.update(_diff_field(reference, instance, accessor, deep=deep))
+        diff.update(_diff_field(reference, instance, accessor, deep=deep, **kwargs))
 
     return diff
 
@@ -52,9 +52,9 @@ def diff_model_object(reference, instance, **kwargs):
     """
     # pre-signal
     signals.pre_diff.send(sender=reference.__class__, reference=reference,
-        instance=instance, config=kwargs)
+        instance=instance, config=kwargs, **kwargs)
     diff = _diff(reference, instance, **kwargs)
     # post-signal
     signals.post_diff.send(sender=reference.__class__, reference=reference,
-        instance=instance, diff=diff)
+        instance=instance, diff=diff, **kwargs)
     return diff
