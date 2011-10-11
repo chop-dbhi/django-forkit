@@ -76,7 +76,7 @@ def _memoize_reset(reference, instance, **kwargs):
 
     # pre-signal
     signals.pre_reset.send(sender=reference.__class__, reference=reference,
-        instance=instance, config=kwargs)
+        instance=instance, config=config, **kwargs)
 
     fields = config['fields']
     exclude = config['exclude']
@@ -96,7 +96,7 @@ def _memoize_reset(reference, instance, **kwargs):
 
     # post-signal
     signals.post_reset.send(sender=reference.__class__, reference=reference,
-        instance=instance)
+        instance=instance, **kwargs)
 
     if commit:
         commit_model_object(instance)
