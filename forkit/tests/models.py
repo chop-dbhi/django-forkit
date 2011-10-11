@@ -7,7 +7,6 @@ class Tag(ForkableModel):
     def __unicode__(self):
         return u'{0}'.format(self.name)
 
-
 class Author(ForkableModel):
     first_name = models.CharField(max_length=30)
     last_name = models.CharField(max_length=30)
@@ -38,14 +37,31 @@ class Post(ForkableModel):
 
 class A(ForkableModel):
     title = models.CharField(max_length=50)
+    d = models.ForeignKey('D', null=True)
+
+    def __unicode__(self):
+        return u'{0}'.format(self.title)
 
 
 class B(ForkableModel):
     title = models.CharField(max_length=50)
+
+    def __unicode__(self):
+        return u'{0}'.format(self.title)
 
 
 class C(ForkableModel):
     title = models.CharField(max_length=50)
     a = models.ForeignKey(A, null=True)
     b = models.ForeignKey(B, null=True)
+
+    def __unicode__(self):
+        return u'{0}'.format(self.title)
+
+
+class D(ForkableModel):
+    title = models.CharField(max_length=50)
+
+    def __unicode__(self):
+        return u'{0}'.format(self.title)
 

@@ -1,69 +1,80 @@
-[{
-    "pk": 1,
-    "model": "tests.author",
-    "fields": {
-        "first_name": "Byron",
-        "last_name": "Ruth"
+[
+    {
+        "pk": 1,
+        "model": "tests.author",
+        "fields": {
+            "first_name": "Byron",
+            "last_name": "Ruth"
+        }
+    },
+    {
+        "pk": 2,
+        "model": "tests.author",
+        "fields": {
+            "first_name": "Pat",
+            "last_name": "Henning"
+        }
+    },
+    {
+        "pk": 1,
+        "model": "tests.tag",
+        "fields": {
+            "name": "python"
+        }
+    },
+    {
+        "pk": 2,
+        "model": "tests.tag",
+        "fields": {
+            "name": "tip"
+        }
+    },
+    {
+        "pk": 3,
+        "model": "tests.tag",
+        "fields": {
+            "name": "descriptor"
+        }
+    },
+    {
+        "pk": 1,
+        "model": "tests.blog",
+        "fields": {
+            "name": "devel.io",
+            "author": 1
+        }
+    },
+    {
+        "pk": 1,
+        "model": "tests.post",
+        "fields": {
+           "blog": 1,
+           "authors": [1, 2],
+           "title": "Django Tip: Descriptors",
+           "tags": [1, 2, 3]
+        }
+    },
+    {
+        "pk": 1,
+        "model": "tests.a",
+        "fields": {
+            "title": "1"
+        }
+    },
+    {
+        "pk": 1,
+        "model": "tests.b",
+        "fields": {
+            "title": "2"
+        }
+    },
+    {
+        "pk": 1,
+        "model": "tests.c",
+        "fields": {
+            "title": "3",
+            "a": 1,
+            "b": 1
+        }
     }
-}, {
-    "pk": 2,
-    "model": "tests.author",
-    "fields": {
-        "first_name": "Pat",
-        "last_name": "Henning"
-    }
-}, {
-    "pk": 1,
-    "model": "tests.tag",
-    "fields": {
-        "name": "python"
-    }
-}, {
-    "pk": 2,
-    "model": "tests.tag",
-    "fields": {
-        "name": "tip"
-    }
-}, {
-    "pk": 3,
-    "model": "tests.tag",
-    "fields": {
-        "name": "descriptor"
-    }
-}, {
-    "pk": 1,
-    "model": "tests.blog",
-    "fields": {
-        "name": "codeomics.com",
-        "author": 1
-    }
-}, {
-    "pk": 1,
-    "model": "tests.post",
-    "fields": {
-       "blog": 1,
-       "authors": [1, 2],
-       "title": "Django Tip: Descriptors",
-       "tags": [1, 2, 3]
-    }
-}, {
-    "pk": 1,
-    "model": "tests.a",
-    "fields": {
-        "title": "1"
-    }
-}, {
-    "pk": 1,
-    "model": "tests.b",
-    "fields": {
-        "title": "2"
-    }
-}, {
-    "pk": 1,
-    "model": "tests.c",
-    "fields": {
-        "title": "3",
-        "a": 1,
-        "b": 1
-    }
-}]
+]

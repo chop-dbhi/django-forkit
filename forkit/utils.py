@@ -9,17 +9,9 @@ class DeferProxy(object):
         return '<DeferProxy: "{0}">'.format(repr(self.value))
 
 class ForkState(object):
-    """Encapulates all state of a forked model object.
-
-        ``reference`` - the reference object this object was derived from
-        ``fields`` - list field names applicable to this object
-        ``exclude`` - list of field names excluded from the operation
-    """
-    def __init__(self, reference, fields, exclude):
+    "Encapulates all state of a manipulated model object."
+    def __init__(self, reference):
         self.reference = reference
-        self.fields = fields
-        self.exclude = exclude
-
         self.deferred_direct = {}
         self.deferred_related = {}
 
@@ -46,26 +38,34 @@ class ForkState(object):
         return self.deferred_related.get(accessor, None)
 
 
-class ForkCache(object):
-    "Cache references to saved or unsaved forks during a deep fork."
+class Memo(object):
+    "Memoizes reference objects and their instance equivalents."
     def __init__(self):
-        self._cache = {}
+        self._memo = {}
 
-    def get(self, obj):
-        key = obj.pk and (obj.__class__, obj.pk) or obj
-        return self._cache.get(key)
+    def _key(self, reference):
+        if reference.pk:
+            return id(reference.__class__), reference.pk
+        return id(reference)
 
-    def add(self, obj, value):
-        key = obj.pk and (obj.__class__, obj.pk) or obj
-        self._cache[key] = value
+    def has(self, reference):
+        key = self._key(reference)
+        return self._memo.has_key(key)
 
+    def add(self, reference, instance):
+        key = self._key(reference)
+        self._memo[key] = instance
+
+    def get(self, reference):
+        key = self._key(reference)
+        return self._memo.get(key)
 
 def _get_field_by_accessor(instance, accessor):
     """Extends the model ``Options.get_field_by_name`` to look up reverse
-    relationships by their accessor name. This gets cached on the first
+    relationships by their accessor name. This gets memod on the first
     lookup.
 
-    The cache will only be needed when the ``related_name`` attribute has
+    The memo will only be needed when the ``related_name`` attribute has
     not been set for reverse relationships.
     """
     try:
@@ -75,9 +75,9 @@ def _get_field_by_accessor(instance, accessor):
             field = field.field
     # if this occurs, try related object accessor
     except models.FieldDoesNotExist, e:
-        # check to see if this cache has been set
+        # check to see if this memo has been set
         if not hasattr(instance._meta, 'related_objects_by_accessor'):
-            cache = {}
+            memo = {}
 
             # reverse foreign key and many-to-many rels
             related_objects = (
@@ -86,9 +86,9 @@ def _get_field_by_accessor(instance, accessor):
             )
 
             for rel in iter(related_objects):
-                cache[rel.get_accessor_name()] = rel
+                memo[rel.get_accessor_name()] = rel
 
-            instance._meta.related_objects_by_accessor = cache
+            instance._meta.related_objects_by_accessor = memo
 
         rel = instance._meta.related_objects_by_accessor.get(accessor, None)
 
